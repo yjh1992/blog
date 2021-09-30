@@ -1,1 +1,2 @@
-- [Fastclick.js](./dosc/source-code/fastclickjs.md)
+- [Fastclick.js](/blog/source-code/fastclickjs)
+
