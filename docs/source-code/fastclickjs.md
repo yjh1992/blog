@@ -10,7 +10,7 @@
 
 ## 解决方案
 
-fastclick.js 就是用来解决这 300ms 延迟的一个 `JS` 库。它的原理非常简单：使用移动端的 touch 事件来模拟 click 事件。
+fastclick.js 就是用来解决这 300ms 延迟的一个 JS 库。它的原理非常简单：使用移动端的 touch 事件来模拟 click 事件。
 
 比如：在 docuemnt.body 上绑定 touchStart 和 touchEnd 事件，touchStart 事件执行时记录一下 event.target 。touchEnd 事件执行时判断一下当前的 event.target 是否等于 touchStart 事件执行时记录的 event.target 。如果相等，就创建一个 click 自定义事件。最后，使用 event.target 触发自定义的 click 事件。
 
@@ -63,7 +63,7 @@ options 说明
 ```js
 if ("addEventListener" in document) {
 	document.addEventListener("DOMContentLoaded", function () {
-    	FastClick.attach(document.body);
+    FastClick.attach(document.body);
 	}, false);
 }
 ```
