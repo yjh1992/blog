@@ -1,18 +1,18 @@
 ## 介绍
 
-在我们进行移动端开发的时候，`click` 事件会存在 `300ms` 延时的现象。具体的原因在于：移动端的屏幕偏小，为了便于用户阅读。所以，在用户进行双击时，浏览器会出现放大视图的默认行为。
+在我们进行移动端开发的时候，click 事件会存在 300ms 延时的现象。具体的原因在于：移动端的屏幕偏小，为了便于用户阅读。所以，在用户进行双击时，浏览器会出现放大视图的默认行为。
 
-当用户点击屏幕两次时，浏览器如何判定用户的行为是双击，还是点击了两次呢？就在于两次点击行为前后的间隔是不是在 `300ms` 之内。如果在 `300ms` 之内，浏览器就判定为 “双击行为”。否则，就认为点击了 `2` 次。
+当用户点击屏幕两次时，浏览器如何判定用户的行为是双击，还是点击了两次呢？就在于两次点击行为前后的间隔是不是在 300ms 之内。如果在 300ms 之内，浏览器就判定为 “双击行为”。否则，就认为点击了 2 次。
 
-所以，当 `用户点击行为` 发生时，浏览器不会立即触发 `click 事件` 。而是等待 `300ms` 。如果在 `300ms` 之内再次发生了 `用户点击行为` ，那么浏览器就会触发 `dblclick 事件`。如果在 `300ms` 之内未再次发生 `用户点击行为`，则浏览器触发 `click 事件` 。
+所以，当 用户点击行为 发生时，浏览器不会立即触发 click 事件 。而是等待 300ms 。如果在 300ms 之内再次发生了 用户点击行为 ，那么浏览器就会触发 dblclick 事件。如果在 300ms 之内未再次发生 用户点击行为，则浏览器触发 click 事件 。
 
 
 
 ## 解决方案
 
-fastclick.js 就是用来解决这 `300ms`  延迟的一个 `JS` 库。它的原理非常简单：使用移动端的  `touch` 事件来模拟 `click` 事件。
+fastclick.js 就是用来解决这 300ms  延迟的一个 `JS` 库。它的原理非常简单：使用移动端的  touch 事件来模拟 click 事件。
 
-比如：在 `docuemnt.body` 上绑定 `touchStart` 和 `touchEnd` 事件，`touchStart` 事件执行时记录一下 `event.target` 。`touchEnd` 事件执行时判断一下当前的 `event.target` 是否等于 `touchStart` 事件执行时记录的 `event.target` 。如果相等，就创建一个 `click 自定义事件` 。最后，使用 `event.target` 触发自定义的 `click` 事件。
+比如：在 docuemnt.body 上绑定 touchStart 和 touchEnd 事件，touchStart 事件执行时记录一下 event.target 。touchEnd 事件执行时判断一下当前的 event.target 是否等于 touchStart 事件执行时记录的 event.target 。如果相等，就创建一个 click 自定义事件。最后，使用 event.target 触发自定义的 click 事件。
 
 当然，以上知识核心的思路。真正实现起来并没有这么简单，还要考虑很多场景和各个手机下的兼容性问题。接下来，就让我们开始源码的阅读吧！
 
@@ -25,8 +25,8 @@ fastclick.js 就是用来解决这 `300ms`  延迟的一个 `JS` 库。它的原
 源码解读我们会分为一下几个部分：
 
 1.  [Fastclick API](#Fastclick API) -- 了解如何使用，才能知道内部代码是用完成了哪些事情
-2. [整体概括](#整体概括) -- 整体看一下 `fastclick.js` 的源码分为几个部分
-3. [详细解读](#详细解读) -- 从 `fastclick.js` 的入口开始分析整个链路做了哪些事情
+2. [整体概括](#整体概括) -- 整体看一下 fastclick.js 的源码分为几个部分
+3. [详细解读](#详细解读) -- 从 fastclick.js 的入口开始分析整个链路做了哪些事情
 
 
 
@@ -43,10 +43,18 @@ fastclick.js 就是用来解决这 `300ms`  延迟的一个 `JS` 库。它的原
 FastClick.attach(layer[, options])
 ```
 
+
+
+参数说明：
+
 | params  | 说明                   |
 | ------- | ---------------------- |
 | layer   | fastclick的事件代理DOM |
 | options | fastclick配置对象      |
+
+
+
+options 说明
 
 | option        | 默认值 | 单位 | 说明                                                         |
 | ------------- | ------ | ---- | ------------------------------------------------------------ |
@@ -54,12 +62,14 @@ FastClick.attach(layer[, options])
 | tapDelay      | 200    | ms   | fastclick 事件触发触发间隔，在此间隔内，fastclick 只会触发一次 |
 | tapTimeout    | 700    | ms   | 从 touchEnd 与 touchStart 的触发间隔超过这个值，将会取消 fastclick 事件 |
 
+
+
 初始化：
 
 ```js
 if ('addEventListener' in document) {
 	document.addEventListener('DOMContentLoaded', function() {
-		FastClick.attach(document.body);
+    FastClick.attach(document.body);
 	}, false);
 }
 ```
@@ -68,7 +78,7 @@ if ('addEventListener' in document) {
 
 ## 整体概括
 
-我们已经了解了 `Fastclick` 相关的 `API` ，接下来我们来看一 `Fastclick 源码` 有哪几个部分。
+我们已经了解了 Fastclick 相关的 API ，接下来我们来看一 Fastclick 源码 有哪几个部分。
 
 > tip：为了方便阅读，我删除了源码相关的注释。并把相关的代码调整了位置
 
