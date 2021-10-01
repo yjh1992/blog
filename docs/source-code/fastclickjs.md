@@ -20,7 +20,7 @@ fastclick.js 就是用来解决这 300ms 延迟的一个 `JS` 库。它的原理
 
 源码解读我们会分为一下几个部分：
 
-1.  [Fastclick API](#Fastclick-API) -- 了解如何使用，才能知道内部代码是用完成了哪些事情
+1.  [Fastclick-API](#Fastclick-API) -- 了解如何使用，才能知道内部代码是用完成了哪些事情
 2.  [整体概括](#整体概括) -- 整体看一下 fastclick.js 的源码分为几个部分
 3.  [详细解读](#详细解读) -- 从 fastclick.js 的入口开始分析整个链路做了哪些事情
 
@@ -56,13 +56,9 @@ options 说明
 
 ```js
 if ("addEventListener" in document) {
-  document.addEventListener(
-    "DOMContentLoaded",
-    function () {
-      FastClick.attach(document.body);
-    },
-    false
-  );
+  document.addEventListener("DOMContentLoaded", function () {
+  	FastClick.attach(document.body);
+  }, false);
 }
 ```
 
