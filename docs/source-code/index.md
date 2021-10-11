@@ -8,5 +8,5 @@
 
 源码列表：
 
-- [Fastclick.js](/blog/source-code/fastclickjs)
+- [Fastclick.js](/blog/source-code/fastclick)
 

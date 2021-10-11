@@ -6,6 +6,8 @@
 
 所以，当 用户点击行为 发生时，浏览器不会立即触发 click 事件 。而是等待 300ms 。如果在 300ms 之内再次发生了 用户点击行为 ，那么浏览器就会触发 dblclick 事件。如果在 300ms 之内未再次发生 用户点击行为，则浏览器触发 click 事件 。
 
+---
+
 
 
 ## 解决方案
@@ -18,19 +20,23 @@ fastclick.js 就是用来解决这 300ms 延迟的一个 JS 库。它的原理�
 
 [fastclick.js github 地址](https://github.com/ftlabs/fastclick)
 
+---
+
 
 
 ## 源码解读
 
 源码解读我们会分为一下几个部分：
 
-1.  [Fastclick API](#Fastclick API) -- 了解如何使用，才能知道内部代码是用完成了哪些事情
+1.  [API介绍](#API介绍) -- 了解如何使用，才能知道内部代码是用完成了哪些事情
 2.  [整体概括](#整体概括) -- 整体看一下 fastclick.js 的源码分为几个部分
 3.  [详细解读](#详细解读) -- 从 fastclick.js 的入口开始分析整个链路做了哪些事情
 
+---
 
 
-### Fastclick API
+
+### API介绍
 
 ```js
 /**
@@ -67,6 +73,8 @@ if ("addEventListener" in document) {
 	}, false);
 }
 ```
+
+---
 
 
 
@@ -181,6 +189,237 @@ if ("addEventListener" in document) {
 
 以上就是 FastClick 的整体情况了。现在就让我们开始看看详细的细节吧！
 
+---
+
 
 
 ## 详细解读
+
+我们首先从 Fastclick 初始化开始，看看都做了哪些事情。FastClick 官方示例：
+
+```js
+if ("addEventListener" in document) {
+	document.addEventListener("DOMContentLoaded", function () {
+    FastClick.attach(document.body);
+	}, false);
+}
+```
+
+Fastclick 初始化，调用了 attach 静态方法。我们在 [整体概括](#整体概括) 中提到 attach 是 FastClick 构造函数的一个工厂方法。参数如下：
+
+| params  | 说明                     |
+| ------- | ------------------------ |
+| layer   | fastclick 的事件代理 DOM |
+| options | fastclick 配置对象       |
+
+在 FastClick 官方示例中，第一个参数 layer 传递的是 document.body。第二个参数 options 并没有传。那就让我们先从 attach 方法入手。
+
+
+
+### FastClick.attach
+
+```js
+FastClick.attach = function(layer, options) {
+  return new FastClick(layer, options);
+};
+```
+
+我们看到，attach 方法的代码就只有一行，return 了一个 FastClick 构造函数的实例。也就是说，我们把 FastClick 初始化的方式改成下面这个样子，也是能够正常执行的：
+
+```js
+if ("addEventListener" in document) {
+	document.addEventListener("DOMContentLoaded", function () {
+    // 这里改成了直接 new FastClick 构造函数
+    new FastClick(document.body);
+	}, false);
+}
+```
+
+在看到这里，也许你会有个疑问。既然直接 new FastClick(layer) 就能够进行初始化，FastClick 为什么还要脱裤子放屁搞个 **工厂方法** 呢？
+
+首先我们要说明一下 **工厂方法** 这种设计模式的意义是什么。以下是个人的理解：
+
+> 工厂方法：提供一个统一对外的实例化出口，用户只需要知道传递什么参数，不需要关心内部的具体实现。
+
+因为 FastClick 的实例化足够简单，不足以体现 **工厂方法** 的好处。那就举个实例化稍微复杂一点的例子。比如：JQuery 的 $()。
+
+$() 也是一个 **工厂方法** ，我们看一下它的几种常见用法：
+
+```js
+// 获取 DOM 节点
+const ulDOM = $('body .content ul');
+
+// 创建 DOM 节点
+$('<li><p>我是一个 list-item</p></li>').appendTo(ulDom);
+
+// DOM Ready 的回调
+$(function() {
+	//... DOMContentLoaded 事件完成
+});
+```
+
+同样一个 $()，根据参数的不同，创建了不同的实例对象。用户只需要知道如何使用即可，不需要关心内部的实现细节。这就是 **工厂方法** 的好处。
+
+再看 FastClick.attach 工厂方法，FastClick 实例化足够简单，也不会根据参数不同有太大的变化。所以，就算你觉得没必要使用 **工厂方法**，也不能有人去反驳你。但是做为我个人来说，我是非常认可这里使用一个 **工厂方法** 来作为实例化的统一出口的。就算没必要，那装个B它不香吗？
+
+回归到源码上，既然 attach 直接调用的 FastClick 构造函数，那我们就看一下 FastClick 构造函数做了哪些事情吧！
+
+
+
+### new FastClick
+
+```js
+function FastClick(layer, options) {
+		var oldOnClick;
+
+		options = options || {};
+
+		/**
+		 * Whether a click is currently being tracked.
+		 *
+		 * @type boolean
+		 */
+		this.trackingClick = false;
+
+
+		/**
+		 * Timestamp for when click tracking started.
+		 *
+		 * @type number
+		 */
+		this.trackingClickStart = 0;
+
+
+		/**
+		 * The element being tracked for a click.
+		 *
+		 * @type EventTarget
+		 */
+		this.targetElement = null;
+
+
+		/**
+		 * X-coordinate of touch start event.
+		 *
+		 * @type number
+		 */
+		this.touchStartX = 0;
+
+
+		/**
+		 * Y-coordinate of touch start event.
+		 *
+		 * @type number
+		 */
+		this.touchStartY = 0;
+
+
+		/**
+		 * ID of the last touch, retrieved from Touch.identifier.
+		 *
+		 * @type number
+		 */
+		this.lastTouchIdentifier = 0;
+
+
+		/**
+		 * Touchmove boundary, beyond which a click will be cancelled.
+		 *
+		 * @type number
+		 */
+		this.touchBoundary = options.touchBoundary || 10;
+
+
+		/**
+		 * The FastClick layer.
+		 *
+		 * @type Element
+		 */
+		this.layer = layer;
+
+		/**
+		 * The minimum time between tap(touchstart and touchend) events
+		 *
+		 * @type number
+		 */
+		this.tapDelay = options.tapDelay || 200;
+
+		/**
+		 * The maximum time for a tap
+		 *
+		 * @type number
+		 */
+		this.tapTimeout = options.tapTimeout || 700;
+
+		if (FastClick.notNeeded(layer)) {
+			return;
+		}
+
+		// Some old versions of Android don't have Function.prototype.bind
+		function bind(method, context) {
+			return function() { return method.apply(context, arguments); };
+		}
+
+
+		var methods = ['onMouse', 'onClick', 'onTouchStart', 'onTouchMove', 'onTouchEnd', 'onTouchCancel'];
+		var context = this;
+		for (var i = 0, l = methods.length; i < l; i++) {
+			context[methods[i]] = bind(context[methods[i]], context);
+		}
+
+		// Set up event handlers as required
+		if (deviceIsAndroid) {
+			layer.addEventListener('mouseover', this.onMouse, true);
+			layer.addEventListener('mousedown', this.onMouse, true);
+			layer.addEventListener('mouseup', this.onMouse, true);
+		}
+
+		layer.addEventListener('click', this.onClick, true);
+		layer.addEventListener('touchstart', this.onTouchStart, false);
+		layer.addEventListener('touchmove', this.onTouchMove, false);
+		layer.addEventListener('touchend', this.onTouchEnd, false);
+		layer.addEventListener('touchcancel', this.onTouchCancel, false);
+
+		// Hack is required for browsers that don't support Event#stopImmediatePropagation (e.g. Android 2)
+		// which is how FastClick normally stops click events bubbling to callbacks registered on the FastClick
+		// layer when they are cancelled.
+		if (!Event.prototype.stopImmediatePropagation) {
+			layer.removeEventListener = function(type, callback, capture) {
+				var rmv = Node.prototype.removeEventListener;
+				if (type === 'click') {
+					rmv.call(layer, type, callback.hijacked || callback, capture);
+				} else {
+					rmv.call(layer, type, callback, capture);
+				}
+			};
+
+			layer.addEventListener = function(type, callback, capture) {
+				var adv = Node.prototype.addEventListener;
+				if (type === 'click') {
+					adv.call(layer, type, callback.hijacked || (callback.hijacked = function(event) {
+						if (!event.propagationStopped) {
+							callback(event);
+						}
+					}), capture);
+				} else {
+					adv.call(layer, type, callback, capture);
+				}
+			};
+		}
+
+		// If a handler is already declared in the element's onclick attribute, it will be fired before
+		// FastClick's onClick handler. Fix this by pulling out the user-defined handler function and
+		// adding it as listener.
+		if (typeof layer.onclick === 'function') {
+
+			// Android browser on at least 3.2 requires a new reference to the function in layer.onclick
+			// - the old one won't work if passed to addEventListener directly.
+			oldOnClick = layer.onclick;
+			layer.addEventListener('click', function(event) {
+				oldOnClick(event);
+			}, false);
+			layer.onclick = null;
+		}
+}
+```
+
